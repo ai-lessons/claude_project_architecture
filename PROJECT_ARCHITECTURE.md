@@ -1,9 +1,8 @@
-<<<<<<< HEAD
 ﻿# Project Architecture Overview
 
 **Project:** ChatOpenAI Integration Assistant  
-**Version:** 1.3  
-**Last Updated:** 2025-01-31  
+**Version:** 2.0  
+**Last Updated:** 2025-09-30  
 **Status:** Active Development
 
 ---
@@ -26,14 +25,6 @@
 
 ### Active Backlog Location
 👉 **See "Current Implementation Status" section below** - this is the SINGLE SOURCE OF TRUTH for what's done and what's planned.
-=======
-# Project Architecture Overview
-
-**Проект:** ChatOpenAI Integration Assistant  
-**Версия:** 1.3  
-**Дата обновления:** 2025-01-31  
-**Статус:** Активная разработка
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ---
 
@@ -43,20 +34,12 @@
 - **Framework:** React 18 + TypeScript + Vite
 - **State Management:** Zustand (useStore)
 - **UI/CSS:** Tailwind CSS + Lucide React icons
-<<<<<<< HEAD
 - **Routing:** React Router (if used)
-=======
-- **Routing:** React Router (если используется)
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ### Backend & Infrastructure  
 - **Database:** Supabase (PostgreSQL)
 - **Authentication:** Supabase Auth
-<<<<<<< HEAD
 - **File Storage:** OpenAI Files API (NOT Supabase Storage)
-=======
-- **File Storage:** OpenAI Files API (НЕ Supabase Storage)
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 - **AI Integration:** OpenAI Assistants API + Embeddings API
 
 ### Key Dependencies
@@ -76,7 +59,6 @@
 
 ```
 src/
-<<<<<<< HEAD
 ├── components/           # React components
 │   ├── Personalities.tsx # Assistant management + files
 │   ├── FileDropZone.tsx  # Drag & drop component
@@ -87,41 +69,21 @@ src/
 │   ├── openai.ts         # OpenAI API service
 │   ├── fileProcessing.ts # File processing
 │   └── ragService.ts     # RAG service (legacy)
-=======
-├── components/           # React компоненты
-│   ├── Personalities.tsx # Управление ассистентами + файлы
-│   ├── FileDropZone.tsx  # Drag & drop компонент
-│   ├── ChatArea.tsx      # Интерфейс чата
-│   └── Sidebar.tsx       # Навигация
-├── lib/                  # Сервисы и утилиты
-│   ├── supabase.ts       # Supabase client + типы
-│   ├── openai.ts         # OpenAI API service
-│   ├── fileProcessing.ts # Обработка файлов
-│   └── ragService.ts     # RAG сервис (legacy)
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 ├── store/
 │   └── useStore.ts       # Zustand store
 └── App.tsx
 
 supabase/
-<<<<<<< HEAD
 ├── docs/                 # Database documentation
 │   └── DATABASE_CHANGELOG.md
 ├── scripts/              # Migrations and scripts
 └── migrations/           # SQL migrations
-=======
-├── docs/                 # Документация БД
-│   └── DATABASE_CHANGELOG.md
-├── scripts/              # Миграции и скрипты
-└── migrations/           # SQL миграции
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 ```
 
 ---
 
 ## 🏗️ Core Architecture Decisions
 
-<<<<<<< HEAD
 ### 1. File Architecture: OpenAI Files API
 
 **Decision:** Files stored in OpenAI, NOT in our database  
@@ -141,27 +103,6 @@ supabase/
 files: PersonalityFile[] = [
   {
     openai_file_id: "file-abc123", // ID in OpenAI
-=======
-### 1. Файловая архитектура: OpenAI Files API
-
-**Решение:** Файлы хранятся в OpenAI, НЕ в нашей БД  
-**Обоснование:**
-- ✅ Нативная интеграция с Assistants API
-- ✅ Автоматическая векторизация и поиск  
-- ✅ Меньше сложности в инфраструктуре
-- ✅ Воспроизведение логики Custom GPT
-
-**Альтернативы рассмотрены:**
-- ❌ Supabase Storage + собственная RAG система
-- ❌ Локальное хранение + векторизация
-
-**Структура данных:**
-```typescript
-// В БД храним только метаданные:
-files: PersonalityFile[] = [
-  {
-    openai_file_id: "file-abc123", // ID в OpenAI
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
     file_name: "document.pdf",
     file_size: 1024000,
     status: "ready" | "processing" | "error"
@@ -171,7 +112,6 @@ files: PersonalityFile[] = [
 
 ### 2. State Management: Zustand
 
-<<<<<<< HEAD
 **Decision:** Zustand instead of Redux/Context API  
 **Rationale:**
 - ✅ Simple to use
@@ -187,38 +127,20 @@ files: PersonalityFile[] = [
 - ✅ PostgreSQL excellent JSONB support
 - ✅ Fewer JOINs when reading data
 - ✅ Atomic updates of file array
-=======
-**Решение:** Zustand вместо Redux/Context API  
-**Обоснование:**
-- ✅ Простота использования
-- ✅ TypeScript поддержка  
-- ✅ Минимальный boilerplate
-- ✅ Отличная производительность
-
-### 3. Database: JSONB vs Relational
-
-**Решение:** JSONB для файлов, реляционная структура для основных данных  
-**Обоснование:**
-- ✅ `personalities.files` как JSONB массив - гибкость
-- ✅ PostgreSQL отлично поддерживает JSONB
-- ✅ Меньше JOIN'ов при чтении данных
-- ✅ Atomic updates файлового массива
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ---
 
 ## 🔧 Key Services & Components
 
 ### OpenAI Service (src/lib/openai.ts)
-<<<<<<< HEAD
 **Purpose:** Interaction with OpenAI API  
 **Key Methods:**
 ```typescript
 - createAssistant() → create assistant with name transliteration
 - updateAssistant() → update prompt + file_instruction  
-- uploadFileToOpenAI() → upload file to OpenAI Files API ✅
-- deleteFileFromOpenAI() → delete file from OpenAI ✅
-- listFiles() → list all assistant files ✅
+- uploadFileToOpenAI() → upload file to OpenAI Files API
+- deleteFileFromOpenAI() → delete file from OpenAI
+- listFiles() → list all assistant files
 - runAssistant() → run chat with optimized polling
 - checkRun() → check status without duplication
 ```
@@ -231,28 +153,6 @@ files: PersonalityFile[] = [
 ### Zustand Store (src/store/useStore.ts)
 **Purpose:** Central application state  
 **Structure:**
-=======
-**Назначение:** Взаимодействие с OpenAI API  
-**Ключевые методы:**
-```typescript
-- createAssistant() → создание ассистента с транслитерацией имени
-- updateAssistant() → обновление промпта + file_instruction  
-- uploadFileToOpenAI() → загрузка файла в OpenAI Files API ✅
-- deleteFileFromOpenAI() → удаление файла из OpenAI ✅
-- listFiles() → список всех файлов ассистента ✅
-- runAssistant() → запуск чата с оптимизированным polling
-- checkRun() → проверка статуса без дублирования
-```
-
-**Архитектурные особенности:**
-- Транслитерация кириллицы → латиница для OpenAI
-- Системный промпт = base_prompt + file_instruction  
-- Polling с минимальными API-вызовами
-
-### Zustand Store (src/store/useStore.ts)
-**Назначение:** Центральное состояние приложения  
-**Структура:**
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 ```typescript
 AppState {
   // Auth
@@ -272,14 +172,13 @@ AppState {
 }
 ```
 
-<<<<<<< HEAD
 **Key Methods:**
 - `sendMessage()` → send message with optimized polling
 - `updatePersonality()` → update + sync with OpenAI
-- `uploadPersonalityFile()` → coordinate file upload ✅
-- `deletePersonalityFile()` → delete file with assistant update ✅
+- `uploadPersonalityFile()` → coordinate file upload
+- `deletePersonalityFile()` → delete file with assistant update
 
-### FileDropZone Component (src/components/FileDropZone.tsx) ✨ NEW
+### FileDropZone Component (src/components/FileDropZone.tsx)
 **Purpose:** Reusable drag & drop component  
 **Features:**
 - Full drag & drop functionality
@@ -294,47 +193,16 @@ AppState {
 - Strict TypeScript types for all tables
 - PersonalityFile interface for JSONB structure
 - RLS (Row Level Security) policies
-=======
-**Ключевые методы:**
-- `sendMessage()` → отправка сообщения с оптимизированным polling
-- `updatePersonality()` → обновление + синхронизация с OpenAI
-- `uploadPersonalityFile()` → координация загрузки файлов ✅
-- `deletePersonalityFile()` → удаление файла с обновлением ассистента ✅
-
-### FileDropZone Component (src/components/FileDropZone.tsx) ✨ NEW
-**Назначение:** Переиспользуемый drag & drop компонент  
-**Особенности:**
-- Полная drag & drop функциональность
-- Визуальные индикаторы состояния (hover, active, error)
-- Компактный режим для разных UI контекстов
-- Встроенная валидация файлов
-- TypeScript типизация props
-
-### Database Layer (src/lib/supabase.ts)
-**Назначение:** Типизированный доступ к Supabase  
-**Особенности:**
-- Строгие TypeScript типы для всех таблиц
-- PersonalityFile интерфейс для JSONB структуры
-- RLS (Row Level Security) политики
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ---
 
 ## 📡 Data Flow & Integration Patterns
 
-<<<<<<< HEAD
 ### 1. Create/Update Personality
 ```
 UI Form → useStore.updatePersonality() → 
 ├── Update Supabase DB
 ├── openaiService.updateAssistant() (system prompt)  
-=======
-### 1. Создание/обновление Personality
-```
-UI Form → useStore.updatePersonality() → 
-├── Update Supabase DB
-├── openaiService.updateAssistant() (системный промпт)  
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 └── UI State Update
 ```
 
@@ -350,21 +218,12 @@ User Input → useStore.sendMessage() →
 └── Update UI + Save to DB
 ```
 
-<<<<<<< HEAD
 ### 3. File Upload Flow
 ```
 File Selection → uploadPersonalityFile() →
 ├── openaiService.uploadFileToOpenAI() → file_id
 ├── Update personality.files[] in DB
 ├── openaiService.updateAssistant() → update prompt  
-=======
-### 3. File Upload Flow (планируется)
-```
-File Selection → uploadPersonalityFile() →
-├── openaiService.uploadFileToOpenAI() → file_id
-├── Update personality.files[] в БД
-├── openaiService.updateAssistant() → обновить промпт  
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 └── UI refresh
 ```
 
@@ -373,7 +232,6 @@ File Selection → uploadPersonalityFile() →
 ## 🎯 Development Standards
 
 ### Code Organization
-<<<<<<< HEAD
 - **1 component = 1 file**
 - **Services in lib/** for reusability
 - **Strict TypeScript** - no any (except exceptions)
@@ -396,36 +254,11 @@ File Selection → uploadPersonalityFile() →
 - **Zustand selective subscriptions**
 - **GIN indexes** for JSONB queries
 - **Minimal re-renders** in React
-=======
-- **1 компонент = 1 файл**
-- **Сервисы в lib/** для переиспользования
-- **TypeScript строгий** - no any (кроме исключений)
-- **Именование:** camelCase для переменных, PascalCase для компонентов
-
-### Database Patterns  
-- **UUID** для всех Primary Keys
-- **JSONB** для сложных структур данных
-- **RLS** для безопасности на уровне строк
-- **Миграции** через scripts с логированием
-
-### Error Handling
-- **Try/catch** в async функциях
-- **User-friendly** сообщения об ошибках
-- **Консольное логирование** для отладки
-- **Fallback состояния** в UI
-
-### Performance Optimizations  
-- **Оптимизированный polling** OpenAI API
-- **Zustand selective subscriptions**
-- **GIN индексы** для JSONB queries
-- **Минимальные re-renders** в React
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ---
 
 ## 📋 Current Implementation Status
 
-<<<<<<< HEAD
 **🎯 THIS IS THE ACTIVE BACKLOG - SINGLE SOURCE OF TRUTH**
 
 ### ✅ Completed (v1.2)
@@ -467,61 +300,26 @@ File Selection → uploadPersonalityFile() →
 ## 📚 Related Documentation
 
 ### For Claude Code:
-- **CLAUDE.md** - Critical rules and quick reference
-- **CLAUDE_PATTERNS.md** - Code templates and patterns
-- **CLAUDE_TROUBLESHOOTING.md** - Debug guide
-- **CLAUDE_SPRINT_GUIDE.md** - Sprint workflow
+- **CLAUDE.md** - Critical rules, code patterns, and sprint workflow
 
 ### For Developers:
 - **README.md** - Project overview and setup
 - **DATABASE_CHANGELOG.md** - Database evolution history
-- **supabase/docs/** - Additional technical docs
+- **supabase/docs/** - Additional technical documentation
 
 ### For Users:
 - **User Guide** (planned) - End-user documentation
 - **API Documentation** (planned) - External API reference
-=======
-### ✅ Готово (v1.2)
-- [x] Базовый чат с ассистентами
-- [x] Управление personalities  
-- [x] OpenAI integration + polling optimization
-- [x] Транслитерация имен для OpenAI
-- [x] JSONB структура для файлов
-- [x] Database cleanup от legacy полей
-
-### ✅ Готово (v1.3)
-- [x] File upload к ассистентам  
-- [x] UI для управления файлами
-- [x] Drag & drop интерфейс
-
-### 🚧 В разработке
-- [ ] Integration testing для file upload
-- [ ] Error handling improvements
-
-### 📋 Планируется  
-- [ ] Function calling для ассистентов
-- [ ] Advanced file types support
-- [ ] Export/import чатов
-- [ ] Аналитика использования
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ---
 
 ## 🔄 Evolution & Migration Strategy
 
-<<<<<<< HEAD
 ### Approach to Changes
 1. **Document decision** in this file
 2. **Database changes** → DATABASE_CHANGELOG.md
 3. **Backward compatibility** when possible
 4. **Feature flags** for experimental functionality
-=======
-### Подход к изменениям
-1. **Документировать решение** в этом файле
-2. **Database changes** → DATABASE_CHANGELOG.md
-3. **Backward compatibility** когда возможно
-4. **Feature flags** для экспериментальной функциональности
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
 
 ### Migration Pattern
 ```
@@ -530,7 +328,6 @@ Planning → Implementation → Testing → Documentation → Deployment
   This file  Code+Tests    Manual QA   Update docs   Git push
 ```
 
-<<<<<<< HEAD
 ### Version Numbering
 - **Major (2.0):** Breaking changes, major features
 - **Minor (1.3):** New features, no breaking changes
@@ -568,21 +365,14 @@ Check current sprint tasks in "Current Implementation Status"
 - **Database structure** → DATABASE_CHANGELOG.md
 - **Setup issues** → README.md
 - **Claude Code workflow** → CLAUDE.md
-- **Debugging** → CLAUDE_TROUBLESHOOTING.md
 
 ### Contributing:
 - Follow development standards above
 - Update documentation when making changes
 - Run tests before committing
-- Follow sprint workflow (see CLAUDE_SPRINT_GUIDE.md)
+- Follow sprint workflow (see CLAUDE.md)
 
 ---
 
 *This document is maintained to stay current for effective development*  
-*Last updated: 2025-01-31*
-=======
----
-
-*Документ поддерживается в актуальном состоянии для эффективной разработки*  
-*Последнее обновление: 2025-01-31*
->>>>>>> e5b902dc3d33f302b8265ec8c2422be19827dc95
+*Last updated: 2025-09-30*
