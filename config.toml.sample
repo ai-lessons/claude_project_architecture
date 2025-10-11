@@ -1,0 +1,13 @@
+# Copy this to your user config:
+# macOS/Linux: ~/.codex/config.toml
+# Windows:     %USERPROFILE%\.codex\config.toml
+
+model = "gpt-5"
+approval_policy = "on-request"     # ask before writing files or running commands
+sandbox_mode = "workspace-write"   # allow editing the workspace; restrict network
+model_reasoning_effort = "medium"
+
+[profiles.strict]
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
