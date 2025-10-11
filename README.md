@@ -11,6 +11,8 @@ This repository contains **project-agnostic** files you can copy into **any** co
 - `config.toml.sample` — sample user-level config (optional)
 - `CONTRIBUTING.md` — optional team conventions
 - `prompts/*` — ready prompts to adapt the files to your repo
+- `.gitignore` — список файлов и папок, которые не должны попадать в репозиторий Git (кэш, артефакты сборки, секреты, локальные настройки)
+
 
 ---
 
