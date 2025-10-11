@@ -1,21 +1,32 @@
+Поймал: это ошибка сборки GitHub Pages/Jekyll. GitHub видит в начале файла **YAML front-matter** или Liquid-шаблоны и пытается их парсить. У нас внутри текста есть плейсхолдеры вида `{{...}}` и даже `{{... | ...}}` — для Jekyll это **Liquid**, а горизонтальные линии `---` могут быть восприняты как начало YAML. В итоге он падает: “did not find expected … while scanning an alias”.
+
+### Как починить
+
+1. **Отключить обработку Liquid/Jekyll** для этого файла: обернуть содержимое в `{% raw %}` / `{% endraw %}`.
+2. **Убрать `|` внутри `{{...}}`**, чтобы Liquid не думал, что это фильтр. Вынесем “e.g.” отдельно.
+
+Ниже — исправленная универсальная версия `CLAUDE.md` (готова к вставке). Я добавил `{% raw %}` в начале и `{% endraw %}` в конце и переписал спорные места.
+
 ---
 
+````md
+{% raw %}
 # Claude Code Working Instructions (Universal)
 
-**Project:** `{{PROJECT_NAME}}`
-**Purpose:** Operational guide for efficient development with Claude Code in VS Code
+**Project:** `{{PROJECT_NAME}}`  
+**Purpose:** Operational guide for efficient development with Claude Code in VS Code  
 **Last Updated:** 2025-10-11
 
-> Pair this file with **PROJECT_ARCHITECTURE.md** (human-facing architecture, decisions, backlog).
+> Pair this file with **PROJECT_ARCHITECTURE.md** (human-facing architecture, decisions, backlog).  
 > Keep both in sync. Use `{{...}}` placeholders to adapt to your stack.
 
 ---
 
 ## 🎯 READ FIRST (Priority Order)
 
-1. **PROJECT_ARCHITECTURE.md** — 🎯 single source of truth (architecture, backlog, decisions)
-2. **{{SCHEMA_CHANGELOG_PATH | e.g., supabase/docs/DATABASE_CHANGELOG.md}}** — current DB structure (if DB is used)
-3. **README.md** — project overview & quick start
+1. **PROJECT_ARCHITECTURE.md** — 🎯 single source of truth (architecture, backlog, decisions)  
+2. **{{SCHEMA_CHANGELOG_PATH}}** — current DB structure (if DB is used). Example: `supabase/docs/DATABASE_CHANGELOG.md`  
+3. **README.md** — project overview & quick start  
 4. **CONTRIBUTING.md** (if present) — style/PR rules
 
 > If a document conflicts with this file, prefer **PROJECT_ARCHITECTURE.md** and then update this file accordingly.
@@ -24,25 +35,25 @@
 
 ## 🚫 NEVER DO
 
-* Change database schema **outside** of migrations.
-* Duplicate external API calls (especially in polling) — always dedupe/reuse state.
-* Commit secrets or `.env*` files to VCS.
-* Bypass access/authorization layers or RLS (if used).
-* Start coding major changes **before** reading PROJECT_ARCHITECTURE.md.
-* Close a sprint without updating documentation and verifications.
-* Run unbounded loops; always add limits/backoff/time budgets.
+- Change database schema **outside** of migrations.  
+- Duplicate external API calls (especially in polling) — always dedupe/reuse state.  
+- Commit secrets or `.env*` files to VCS.  
+- Bypass access/authorization layers or RLS (if used).  
+- Start coding major changes **before** reading PROJECT_ARCHITECTURE.md.  
+- Close a sprint without updating documentation and verifications.  
+- Run unbounded loops; always add limits/backoff/time budgets.
 
 ---
 
 ## ✅ ALWAYS DO
 
-* Read PROJECT_ARCHITECTURE.md before architectural or cross-cutting changes.
-* Test migrations in a dev/staging environment first.
-* Keep types in code synchronized with DB schema (after migrations).
-* Ask for confirmation before large refactors or behavior changes.
-* Reuse existing patterns (see below) instead of inventing new ones.
-* Update **{{SCHEMA_CHANGELOG_PATH}}** after DB changes.
-* At sprint completion update: PROJECT_ARCHITECTURE.md, {{SCHEMA_CHANGELOG_PATH}}, CLAUDE.md (if patterns changed), README.md.
+- Read PROJECT_ARCHITECTURE.md before architectural or cross-cutting changes.  
+- Test migrations in a dev/staging environment first.  
+- Keep types in code synchronized with DB schema (after migrations).  
+- Ask for confirmation before large refactors or behavior changes.  
+- Reuse existing patterns (see below) instead of inventing new ones.  
+- Update **{{SCHEMA_CHANGELOG_PATH}}** after DB changes.  
+- At sprint completion update: PROJECT_ARCHITECTURE.md, {{SCHEMA_CHANGELOG_PATH}}, CLAUDE.md (if patterns changed), README.md.
 
 ---
 
@@ -50,21 +61,20 @@
 
 > Enable the parts that apply; remove what doesn’t.
 
-* **Files/Assets storage:** `{{FILES_BACKEND}}` (e.g., OpenAI Files API / S3 / local)
-* **State management (web):** `{{STATE_LIB}}` (e.g., Zustand / Redux / Context / Vuex / Signals)
-* **Database:** `{{DB_ENGINE}}` (e.g., Postgres/MySQL/SQLite) with migrations in `{{MIGRATIONS_DIR}}`
-* **External APIs:** `{{APIS}}` (e.g., OpenAI / Stripe / Search) — define rate limits & dedupe keys
-* **Identifiers:** `{{ID_POLICY}}` (e.g., UUIDv4 for primary keys)
-* **Indexing / JSON fields:** `{{JSON_POLICY}}` (e.g., JSONB + GIN for metadata)
+- **Files/Assets storage:** `{{FILES_BACKEND}}` (e.g., OpenAI Files API / S3 / local)  
+- **State management (web):** `{{STATE_LIB}}` (e.g., Zustand / Redux / Context / Vuex / Signals)  
+- **Database:** `{{DB_ENGINE}}` (e.g., Postgres/MySQL/SQLite) with migrations in `{{MIGRATIONS_DIR}}`  
+- **External APIs:** `{{APIS}}` (e.g., OpenAI / Stripe / Search) — define rate limits & dedupe keys  
+- **Identifiers:** `{{ID_POLICY}}` (e.g., UUIDv4 for primary keys)  
+- **Indexing / JSON fields:** `{{JSON_POLICY}}` (e.g., JSONB + GIN for metadata)
 
-> If your API requires Latin-only identifiers, set `{{REQUIRES_LATIN}} = true` and enforce **transliteration** where needed.
+> If your API requires Latin-only identifiers, set `{{REQUIRES_LATIN}} = true` and enforce transliteration where needed.
 
 ---
 
 ## 🔧 Essential Implementation Patterns (adapt to your stack)
 
 ### 1) Service Method (generic external API)
-
 ```typescript
 async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
   if (!client) throw new Error('Client not initialized');
@@ -79,7 +89,7 @@ async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
     throw new Error(`Remote task failed: ${String(err)}`);
   }
 }
-```
+````
 
 ### 2) State Action (store pattern; replace with your state lib)
 
@@ -101,7 +111,7 @@ const doAction = async (param: string) => {
 };
 ```
 
-### 3) Migration (run discrete steps; avoid multi-DDL transactions if your RPC/tooling forbids them)
+### 3) Migration (discrete steps; avoid multi-DDL transactions if your tooling forbids them)
 
 ```javascript
 // Pseudo-example; replace with your migration runner
@@ -351,3 +361,8 @@ rm -rf node_modules && {{PKG_MANAGER}} install
 
 *Maintain this file at each sprint completion.*
 *Last updated: 2025-10-11*
+{% endraw %}
+
+```
+::contentReference[oaicite:0]{index=0}
+```
