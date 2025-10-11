@@ -29,3 +29,18 @@ This repository contains **project-agnostic** files you can copy into **any** co
 3. **Open the project in VS Code**
 
 4. **Run Codex in the terminal:**
+Then copy-paste the prompt from `prompts/codex_adapt.txt` to auto-fill placeholders in `AGENTS.md` and `PROJECT_ARCHITECTURE.md`. Approve the diffs.
+
+5. **Open Claude Code panel** and paste the prompt from `prompts/claude_adapt.txt`. It will adapt `CLAUDE.md` (and can cross-check `AGENTS.md`/`PROJECT_ARCHITECTURE.md`).
+
+6. **Commit the updated files** once you’re happy.
+
+---
+
+## Troubleshooting
+
+- **Codex not found:** install the CLI and ensure it’s on PATH.  
+- **TOML parse error:** remove Markdown code fences from `~/.codex/config.toml`.  
+- **Repo is unusual:** let the tools scan and propose a minimal structure; refine.
+
+Happy building!
