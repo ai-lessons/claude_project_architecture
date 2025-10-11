@@ -9,10 +9,36 @@
 
 ---
 
+## 📋 Placeholders Guide
+
+Replace these when adapting to your project:
+
+**Required:**
+- `{{PROJECT_NAME}}` — Your project name
+- `{{PKG_MANAGER}}` — Package manager (npm/pnpm/yarn/bun)
+- `{{DB_ENGINE}}` — Database engine (Postgres/MySQL/SQLite) or "N/A" if no database
+
+**Optional (remove sections if not applicable):**
+- `{{SCHEMA_CHANGELOG_PATH}}` — Path to database changelog (e.g., `docs/DATABASE_CHANGELOG.md`)
+- `{{FILES_BACKEND}}` — File storage backend (OpenAI Files API/S3/local)
+- `{{STATE_LIB}}` — State management library (Zustand/Redux/Context/Vuex)
+- `{{MIGRATIONS_DIR}}` — Migrations directory (e.g., `supabase/migrations/`, `prisma/migrations/`)
+- `{{APIS}}` — External APIs used (OpenAI/Stripe/etc.)
+- `{{ID_POLICY}}` — Primary key policy (UUIDv4/auto-increment)
+- `{{JSON_POLICY}}` — JSON field indexing (JSONB + GIN/JSON)
+- `{{REQUIRES_LATIN}}` — Set to `true` if API requires Latin-only identifiers
+- `{{LANGUAGE}}` — Primary language (ts/js/py/go)
+- `{{TABLE_NAME}}` — Replace with actual table name in diagnostic queries
+- `{{API_HOST_FRAGMENT}}` — API host fragment for network debugging
+- `{{MIGRATE_CMD}}` — Database migration command
+- `{{DB_VERIFY_CMD}}` — Database verification command
+
+---
+
 ## 🎯 READ FIRST (Priority Order)
 
 1. **PROJECT_ARCHITECTURE.md** — 🎯 single source of truth (architecture, backlog, decisions)  
-2. **{{SCHEMA_CHANGELOG_PATH}}** — current DB structure (if DB is used). Example: `supabase/docs/DATABASE_CHANGELOG.md`  
+2. **{{SCHEMA_CHANGELOG_PATH}}** — current DB structure (if DB is used). Example: `docs/DATABASE_CHANGELOG.md`  
 3. **README.md** — project overview & quick start  
 4. **CONTRIBUTING.md** (if present) — style/PR rules
 
@@ -64,14 +90,22 @@
 ### 1) Service Method (generic external API)
 
 ```typescript
-async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
+// Example type definition
+interface ApiResult {
+  id: string;
+  status: 'success' | 'error';
+  data?: any;
+  message?: string;
+}
+
+async function doRemoteTask(name: string, client = apiClient): Promise<ApiResult> {
   if (!client) throw new Error('Client not initialized');
 
   const safeName = {{REQUIRES_LATIN ? 'transliterate(name)' : 'name'}};
 
   try {
     const res = await client.call({ name: safeName });
-    return res as Result;
+    return res as ApiResult;
   } catch (err) {
     console.error('Remote API error:', err);
     throw new Error(`Remote task failed: ${String(err)}`);
@@ -102,9 +136,18 @@ const doAction = async (param: string) => {
 ### 3) Migration (discrete steps; avoid multi-DDL transactions if your tooling forbids them)
 
 ```sql
--- Pseudo-example; replace with your migration runner
+-- Migration example: add tag column
+-- Replace with your migration runner syntax
+
 ALTER TABLE items ADD COLUMN IF NOT EXISTS tag TEXT;
 CREATE INDEX IF NOT EXISTS idx_items_tag ON items(tag);
+
+-- Verify the migration:
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'items' AND column_name = 'tag';
+
+-- Document in {{SCHEMA_CHANGELOG_PATH}} after applying
 ```
 
 ### 4) Types after DB changes (keep nullability & optionality in sync)
@@ -113,28 +156,37 @@ CREATE INDEX IF NOT EXISTS idx_items_tag ON items(tag);
 export interface DbItem {
   id: string;               // primary key policy: {{ID_POLICY}}
   tag: string | null;       // match DB nullability
+  created_at: Date;         // timestamp fields
+  updated_at: Date;
 }
 ```
 
 ### 5) Polling with Dedupe/State Reuse
 
 ```typescript
-async function waitForResult(id: string) {
+async function waitForResult(id: string, maxAttempts = 60): Promise<string> {
   let status = 'pending';
   let attempts = 0;
-  const MAX_ATTEMPTS = 60; // prevent infinite loops
   
-  while (status !== 'completed' && status !== 'failed' && attempts < MAX_ATTEMPTS) {
+  while (status !== 'completed' && status !== 'failed' && attempts < maxAttempts) {
     await delay(1000);
-    const next = await getStatus(id);
-    status = next.status;
-    set({ lastCheck: next });   // reuse lastCheck to prevent duplicate calls
-    attempts++;
+    
+    try {
+      const next = await getStatus(id);
+      status = next.status;
+      set({ lastCheck: next }); // reuse lastCheck to prevent duplicate calls
+      attempts++;
+    } catch (err) {
+      console.error('Polling error:', err);
+      throw new Error(`Failed to get status: ${String(err)}`);
+    }
   }
   
-  if (attempts >= MAX_ATTEMPTS) {
-    throw new Error('Polling timeout exceeded');
+  if (attempts >= maxAttempts) {
+    throw new Error(`Polling timeout: exceeded ${maxAttempts} attempts`);
   }
+  
+  return status;
 }
 ```
 
@@ -171,7 +223,7 @@ export function MyList() {
 
 4. **Type drift after schema changes**  
    Symptom: TS errors / runtime nulls  
-   Fix: update types with accurate nullability; regenerate client types if available.
+   Fix: update types with accurate nullability; regenerate client types if available; cross-check with {{SCHEMA_CHANGELOG_PATH}}.
 
 5. **Wrong file flow**  
    Symptom: files not reaching consumer  
@@ -236,7 +288,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 New request
 ├─ DB changes?
-│  ├─ YES → read changelog → plan migration → verify
+│  ├─ YES → read {{SCHEMA_CHANGELOG_PATH}} → plan migration → verify
 │  └─ NO → code analysis
 ├─ External APIs touched?
 │  ├─ YES → check identifiers/limits/backoff
@@ -264,7 +316,7 @@ New request
 
 # Navigation / Search (examples)
 tree -L 2 -I 'node_modules|dist'
-rg "search_term" --type {{LANGUAGE | 'ts'}}
+rg "search_term" --type {{LANGUAGE}}
 ```
 
 ---
@@ -282,6 +334,8 @@ WHERE table_name = '{{TABLE_NAME}}';
 -- Indexes
 SELECT indexname FROM pg_indexes
 WHERE tablename = '{{TABLE_NAME}}';
+
+-- For full current schema, see {{SCHEMA_CHANGELOG_PATH}}
 ```
 
 ### State (examples)
@@ -340,6 +394,7 @@ Functions:   verbs (fetchData), booleans prefixed (isValid/hasAccess/canRun)
 
 - Use your down migration or a documented rollback procedure.
 - Re-sync application types with the DB.
+- Update {{SCHEMA_CHANGELOG_PATH}} to reflect rolled-back state.
 
 **Reset local state (example)**
 
