@@ -8,7 +8,7 @@ This repository contains **project-agnostic** files you can copy into **any** co
 - `AGENTS.md` — operational policy for Codex (what to read, how to act, guardrails)
 - `CLAUDE.md` — operational policy for Claude Code
 - `PROJECT_ARCHITECTURE.md` — human-facing architecture, decisions, backlog
-- `.codex/config.toml.sample` — sample user-level config (optional)
+- `config.toml.sample` — sample user-level config (optional)
 - `CONTRIBUTING.md` — optional team conventions
 - `prompts/*` — ready prompts to adapt the files to your repo
 
