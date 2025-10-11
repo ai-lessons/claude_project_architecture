@@ -1,4 +1,9 @@
-# Project Architecture Overview
+### Development & DevOps
+
+- **Package Manager:** `{{PKG_MANAGER}}` (npm / pnpm / yarn / bun / poetry / pip / go mod)
+- **Monorepo:** `{{MONOREPO}}` (Yes / No)
+  - **Packages:** `{{PACKAGES}}` (if monorepo: @app/web, @app/api, @app/shared, etc.)
+- **Version Control:** `{{VCS}}` (Git / GitHub /# Project Architecture Overview
 
 **Project:** `{{PROJECT_NAME}}`  
 **Version:** `{{VERSION}}`  
@@ -66,7 +71,10 @@
 ### Development & DevOps
 
 - **Package Manager:** `{{PKG_MANAGER}}` (npm / pnpm / yarn / bun / poetry / pip / go mod)
-- **Version Control:** `{{VCS}}` (Git / GitHub / GitLab / Bitbucket)
+- **Monorepo:** `{{MONOREPO}}` (Yes / No)
+  - **Packages:** `{{PACKAGES}}` (if monorepo: @app/web, @app/api, @app/shared, etc.)
+- **Runtime:** `{{RUNTIME}}` (Node.js 20 / Python 3.12 / Go 1.21 / JVM 17 / .NET 8 / Deno / Bun)
+- **Version Control:** `{{VCS}}` (Git / GitHub / GitLab / Bitbucket) GitLab / Bitbucket)
 - **CI/CD:** `{{CI}}` (GitHub Actions / GitLab CI / CircleCI / Jenkins / None)
 - **Deployment:** `{{DEPLOYMENT}}` (Vercel / Netlify / AWS / Docker / Kubernetes / Traditional server)
 - **Testing:** `{{TEST_FRAMEWORK}}` (Vitest / Jest / Pytest / Go test / JUnit / None)
@@ -497,19 +505,25 @@ Planning → Implementation → Testing → Documentation → Deployment
 
 ```bash
 # Setup
-{{SETUP_COMMAND}}
+{{PKG_MANAGER}} install
 
 # Development
-{{DEV_COMMAND}}
+{{PKG_MANAGER}} run dev
 
 # Build
-{{BUILD_COMMAND}}
+{{PKG_MANAGER}} run build
 
 # Test
-{{TEST_COMMAND}}
+{{PKG_MANAGER}} test
 
-# Deploy
-{{DEPLOY_COMMAND}}
+# Database (if applicable)
+{{MIGRATE_CMD}}        # Run migrations
+{{DB_VERIFY_CMD}}      # Verify database state
+
+# Deploy (document your specific process)
+{{PKG_MANAGER}} run deploy
+# or: git push (for auto-deploy platforms)
+# or: docker build && docker push
 ```
 
 ---
