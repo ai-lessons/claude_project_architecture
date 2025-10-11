@@ -1,5 +1,3 @@
-````md
-{% raw %}
 # Claude Code Working Instructions (Universal)
 
 **Project:** `{{PROJECT_NAME}}`  
@@ -48,7 +46,7 @@
 
 ## 🏗️ Architecture Options (toggle per project)
 
-> Enable the parts that apply; remove what doesn’t.
+> Enable the parts that apply; remove what doesn't.
 
 - **Files/Assets storage:** `{{FILES_BACKEND}}` (e.g., OpenAI Files API / S3 / local)  
 - **State management (web):** `{{STATE_LIB}}` (e.g., Zustand / Redux / Context / Vuex / Signals)  
@@ -64,6 +62,7 @@
 ## 🔧 Essential Implementation Patterns (adapt to your stack)
 
 ### 1) Service Method (generic external API)
+
 ```typescript
 async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
   if (!client) throw new Error('Client not initialized');
@@ -78,7 +77,7 @@ async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
     throw new Error(`Remote task failed: ${String(err)}`);
   }
 }
-````
+```
 
 ### 2) State Action (store pattern; replace with your state lib)
 
@@ -102,10 +101,10 @@ const doAction = async (param: string) => {
 
 ### 3) Migration (discrete steps; avoid multi-DDL transactions if your tooling forbids them)
 
-```javascript
-// Pseudo-example; replace with your migration runner
-await runSql('ALTER TABLE items ADD COLUMN IF NOT EXISTS tag TEXT;');
-await runSql('CREATE INDEX IF NOT EXISTS idx_items_tag ON items(tag);');
+```sql
+-- Pseudo-example; replace with your migration runner
+ALTER TABLE items ADD COLUMN IF NOT EXISTS tag TEXT;
+CREATE INDEX IF NOT EXISTS idx_items_tag ON items(tag);
 ```
 
 ### 4) Types after DB changes (keep nullability & optionality in sync)
@@ -122,11 +121,19 @@ export interface DbItem {
 ```typescript
 async function waitForResult(id: string) {
   let status = 'pending';
-  while (status !== 'completed' && status !== 'failed') {
+  let attempts = 0;
+  const MAX_ATTEMPTS = 60; // prevent infinite loops
+  
+  while (status !== 'completed' && status !== 'failed' && attempts < MAX_ATTEMPTS) {
     await delay(1000);
     const next = await getStatus(id);
     status = next.status;
     set({ lastCheck: next });   // reuse lastCheck to prevent duplicate calls
+    attempts++;
+  }
+  
+  if (attempts >= MAX_ATTEMPTS) {
+    throw new Error('Polling timeout exceeded');
   }
 }
 ```
@@ -137,8 +144,11 @@ async function waitForResult(id: string) {
 export function MyList() {
   const items = useStore(s => s.items);     // subscribe to needed slices
   const loading = useStore(s => s.loading);
+  
   return (
-    <div>{loading ? 'Loading…' : items.map(i => <Row key={i.id} {...i} />)}</div>
+    <div>
+      {loading ? 'Loading…' : items.map(i => <Row key={i.id} {...i} />)}
+    </div>
   );
 }
 ```
@@ -147,24 +157,24 @@ export function MyList() {
 
 ## 🐛 Top Issues & Quick Fixes (make these yours)
 
-1. **Duplicate API calls**
-   Symptom: burst of identical requests / rate-limit errors
+1. **Duplicate API calls**  
+   Symptom: burst of identical requests / rate-limit errors  
    Fix: reuse last check/state; dedupe by `(resourceId, op)`; backoff & caps.
 
-2. **Invalid identifiers / locales**
-   Symptom: API rejects non-Latin or special chars
+2. **Invalid identifiers / locales**  
+   Symptom: API rejects non-Latin or special chars  
    Fix: enable transliteration/slugify when `{{REQUIRES_LATIN}} = true`.
 
-3. **Migration conflicts**
-   Symptom: deadlocks / failures in RPC/DDL
+3. **Migration conflicts**  
+   Symptom: deadlocks / failures in RPC/DDL  
    Fix: split DDL into discrete steps; verify between steps; no implicit transactions if tool forbids.
 
-4. **Type drift after schema changes**
-   Symptom: TS errors / runtime nulls
+4. **Type drift after schema changes**  
+   Symptom: TS errors / runtime nulls  
    Fix: update types with accurate nullability; regenerate client types if available.
 
-5. **Wrong file flow**
-   Symptom: files not reaching consumer
+5. **Wrong file flow**  
+   Symptom: files not reaching consumer  
    Fix: follow agreed flow → Upload to `{{FILES_BACKEND}}` → persist metadata → notify consumers.
 
 ---
@@ -174,31 +184,31 @@ export function MyList() {
 **Phase 1 — Planning (5–10%)**
 
 1. Understand request & constraints
-2. Read PROJECT_ARCHITECTURE.md (what’s done?)
+2. Read PROJECT_ARCHITECTURE.md (what's done?)
 3. Read {{SCHEMA_CHANGELOG_PATH}} (DB state)
 4. Draft TODO (+ risks/rollback)
 5. Confirm with owner
 
 **Phase 2 — Implementation (70–80%)**
 
-* Bottom-up: DB → types → services → state → UI
-* Incremental commits; test continuously
+- Bottom-up: DB → types → services → state → UI
+- Incremental commits; test continuously
 
 **Phase 3 — Testing (10–15%)**
 
-* Manual: happy path + edges
-* Run checks: `{{PKG_MANAGER}} run type-check`, `{{PKG_MANAGER}} run build`, tests
+- Manual: happy path + edges
+- Run checks: `{{PKG_MANAGER}} run type-check`, `{{PKG_MANAGER}} run build`, tests
 
 **Phase 4 — Documentation (10–15%)**
 
-* Update PROJECT_ARCHITECTURE.md & {{SCHEMA_CHANGELOG_PATH}}
-* Update CLAUDE.md (new patterns/issues)
-* Update README (commands/versions)
+- Update PROJECT_ARCHITECTURE.md & {{SCHEMA_CHANGELOG_PATH}}
+- Update CLAUDE.md (new patterns/issues)
+- Update README (commands/versions)
 
 **Phase 5 — Completion (≈5%)**
 
-* Final commit (see template below)
-* Push + ask owner to confirm closure
+- Final commit (see template below)
+- Push + ask owner to confirm closure
 
 ---
 
@@ -300,14 +310,14 @@ window.fetch = (...args) => {
 
 ## 📋 Sprint Completion Checklist
 
-* [ ] Feature matches acceptance criteria
-* [ ] Tests pass (manual + type-check + build + automated where present)
-* [ ] No runtime/console errors
-* [ ] PROJECT_ARCHITECTURE.md updated
-* [ ] {{SCHEMA_CHANGELOG_PATH}} updated (if DB changed)
-* [ ] CLAUDE.md updated (if new patterns/issues)
-* [ ] README.md updated (if commands changed)
-* [ ] User/owner confirmed closure
+- [ ] Feature matches acceptance criteria
+- [ ] Tests pass (manual + type-check + build + automated where present)
+- [ ] No runtime/console errors
+- [ ] PROJECT_ARCHITECTURE.md updated
+- [ ] {{SCHEMA_CHANGELOG_PATH}} updated (if DB changed)
+- [ ] CLAUDE.md updated (if new patterns/issues)
+- [ ] README.md updated (if commands changed)
+- [ ] User/owner confirmed closure
 
 ---
 
@@ -328,8 +338,8 @@ Functions:   verbs (fetchData), booleans prefixed (isValid/hasAccess/canRun)
 
 **Rollback migration**
 
-* Use your down migration or a documented rollback procedure.
-* Re-sync application types with the DB.
+- Use your down migration or a documented rollback procedure.
+- Re-sync application types with the DB.
 
 **Reset local state (example)**
 
@@ -348,10 +358,5 @@ rm -rf node_modules && {{PKG_MANAGER}} install
 
 ---
 
-*Maintain this file at each sprint completion.*
+*Maintain this file at each sprint completion.*  
 *Last updated: 2025-10-11*
-{% endraw %}
-
-```
-::contentReference[oaicite:0]{index=0}
-```
