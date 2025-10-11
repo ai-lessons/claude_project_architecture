@@ -1,263 +1,215 @@
-﻿# Claude Code Working Instructions
+---
 
-**Project:** ChatOpenAI Integration Assistant  
-**Purpose:** Complete guide for efficient development  
-**Last Updated:** 2025-09-30
+# Claude Code Working Instructions (Universal)
+
+**Project:** `{{PROJECT_NAME}}`
+**Purpose:** Operational guide for efficient development with Claude Code in VS Code
+**Last Updated:** 2025-10-11
+
+> Pair this file with **PROJECT_ARCHITECTURE.md** (human-facing architecture, decisions, backlog).
+> Keep both in sync. Use `{{...}}` placeholders to adapt to your stack.
 
 ---
 
 ## 🎯 READ FIRST (Priority Order)
 
-1. **PROJECT_ARCHITECTURE.md** - 🎯 SINGLE SOURCE OF TRUTH for backlog
-2. **supabase/docs/DATABASE_CHANGELOG.md** - current DB structure  
-3. **README.md** - project overview
+1. **PROJECT_ARCHITECTURE.md** — 🎯 single source of truth (architecture, backlog, decisions)
+2. **{{SCHEMA_CHANGELOG_PATH | e.g., supabase/docs/DATABASE_CHANGELOG.md}}** — current DB structure (if DB is used)
+3. **README.md** — project overview & quick start
+4. **CONTRIBUTING.md** (if present) — style/PR rules
+
+> If a document conflicts with this file, prefer **PROJECT_ARCHITECTURE.md** and then update this file accordingly.
 
 ---
 
 ## 🚫 NEVER DO
 
-- Create new tables without analyzing existing schema
-- Duplicate OpenAI API calls (especially in polling)
-- Update DB structure without migration script
-- Skip Cyrillic→Latin transliteration for OpenAI API
-- Ignore RLS policies in Supabase
-- Start coding without reading PROJECT_ARCHITECTURE.md
-- Complete sprint without updating documentation
+* Change database schema **outside** of migrations.
+* Duplicate external API calls (especially in polling) — always dedupe/reuse state.
+* Commit secrets or `.env*` files to VCS.
+* Bypass access/authorization layers or RLS (if used).
+* Start coding major changes **before** reading PROJECT_ARCHITECTURE.md.
+* Close a sprint without updating documentation and verifications.
+* Run unbounded loops; always add limits/backoff/time budgets.
 
 ---
 
 ## ✅ ALWAYS DO
 
-- Read PROJECT_ARCHITECTURE.md before architectural changes
-- Test migrations in dev environment
-- Update TypeScript types after DB changes
-- Ask user confirmation before major changes
-- Use existing patterns (see below)
-- Document changes in DATABASE_CHANGELOG.md
-- Update all 4 key files at sprint completion
+* Read PROJECT_ARCHITECTURE.md before architectural or cross-cutting changes.
+* Test migrations in a dev/staging environment first.
+* Keep types in code synchronized with DB schema (after migrations).
+* Ask for confirmation before large refactors or behavior changes.
+* Reuse existing patterns (see below) instead of inventing new ones.
+* Update **{{SCHEMA_CHANGELOG_PATH}}** after DB changes.
+* At sprint completion update: PROJECT_ARCHITECTURE.md, {{SCHEMA_CHANGELOG_PATH}}, CLAUDE.md (if patterns changed), README.md.
 
 ---
 
-## 🏗️ Core Architecture
+## 🏗️ Architecture Options (toggle per project)
 
-### Critical Decisions
-- **Files:** OpenAI Files API (NOT Supabase Storage)
-- **State:** Zustand (NOT Redux/Context)
-- **Database:** PostgreSQL via Supabase, JSONB for file metadata
-- **Polling:** Reuse lastRunCheck to avoid duplicate API calls
+> Enable the parts that apply; remove what doesn’t.
 
-### OpenAI Integration
-- **ALWAYS transliterate names:** Cyrillic→Latin for OpenAI API
-- **System prompt:** base_prompt + file_instruction
-- **File flow:** Upload to OpenAI → Save metadata to DB → Update assistant
+* **Files/Assets storage:** `{{FILES_BACKEND}}` (e.g., OpenAI Files API / S3 / local)
+* **State management (web):** `{{STATE_LIB}}` (e.g., Zustand / Redux / Context / Vuex / Signals)
+* **Database:** `{{DB_ENGINE}}` (e.g., Postgres/MySQL/SQLite) with migrations in `{{MIGRATIONS_DIR}}`
+* **External APIs:** `{{APIS}}` (e.g., OpenAI / Stripe / Search) — define rate limits & dedupe keys
+* **Identifiers:** `{{ID_POLICY}}` (e.g., UUIDv4 for primary keys)
+* **Indexing / JSON fields:** `{{JSON_POLICY}}` (e.g., JSONB + GIN for metadata)
 
-### Database
-- **Primary Keys:** UUID only
-- **File metadata:** JSONB arrays with GIN indexes
-- **Constraints:** Max 20 files per personality
-- **Migrations:** `node apply-migration.mjs`, no BEGIN/COMMIT with rpc
+> If your API requires Latin-only identifiers, set `{{REQUIRES_LATIN}} = true` and enforce **transliteration** where needed.
 
 ---
 
-## 🔧 Essential Code Patterns
+## 🔧 Essential Implementation Patterns (adapt to your stack)
 
-### 1. OpenAI Service Method
+### 1) Service Method (generic external API)
+
 ```typescript
-async newMethod(param: string): Promise<ResultType> {
-  if (!this.client) throw new Error('OpenAI client not initialized');
-  
+async function doRemoteTask(name: string, client = apiClient): Promise<Result> {
+  if (!client) throw new Error('Client not initialized');
+
+  const safeName = {{REQUIRES_LATIN ? 'transliterate(name)' : 'name'}};
+
   try {
-    const result = await this.client.someAPI({
-      name: transliterate(param), // ALWAYS transliterate!
-    });
-    return result;
-  } catch (error) {
-    console.error('OpenAI API error:', error);
-    throw new Error(`Failed: ${error}`);
+    const res = await client.call({ name: safeName });
+    return res as Result;
+  } catch (err) {
+    console.error('Remote API error:', err);
+    throw new Error(`Remote task failed: ${String(err)}`);
   }
 }
 ```
 
-### 2. Zustand Store Action
+### 2) State Action (store pattern; replace with your state lib)
+
 ```typescript
-newAction: async (param: string) => {
-  const { openaiService } = get();
+const doAction = async (param: string) => {
+  set({ loading: true, error: null });
   try {
-    set({ loading: true, error: null });
-    
-    // 1. Update DB
-    const { data, error } = await supabase
-      .from('table_name')
-      .update({ field: param })
-      .select()
-      .single();
-    if (error) throw error;
-    
-    // 2. Sync OpenAI if needed
-    await openaiService.syncMethod(data.id);
-    
-    // 3. Update state
-    set({ data: data, loading: false });
-  } catch (error) {
-    set({ loading: false, error: error.message });
+    // 1) DB update (if applicable)
+    const updated = await db.updateRecord({ param });
+
+    // 2) External sync (optional)
+    await doRemoteTask(updated.safeName);
+
+    // 3) State update
+    set({ data: updated, loading: false });
+  } catch (e: any) {
+    set({ loading: false, error: e?.message ?? 'Unknown error' });
   }
-}
+};
 ```
 
-### 3. Database Migration
+### 3) Migration (run discrete steps; avoid multi-DDL transactions if your RPC/tooling forbids them)
+
 ```javascript
-async function migrate() {
-  // Separate calls, no transactions!
-  const { error: error1 } = await supabase.rpc('exec_sql', {
-    sql: 'ALTER TABLE personalities ADD COLUMN IF NOT EXISTS field TEXT;'
-  });
-  if (error1) throw error1;
-  
-  const { error: error2 } = await supabase.rpc('exec_sql', {
-    sql: 'CREATE INDEX IF NOT EXISTS idx_field ON personalities(field);'
-  });
-  if (error2) throw error2;
+// Pseudo-example; replace with your migration runner
+await runSql('ALTER TABLE items ADD COLUMN IF NOT EXISTS tag TEXT;');
+await runSql('CREATE INDEX IF NOT EXISTS idx_items_tag ON items(tag);');
+```
+
+### 4) Types after DB changes (keep nullability & optionality in sync)
+
+```typescript
+export interface DbItem {
+  id: string;               // primary key policy: {{ID_POLICY}}
+  tag: string | null;       // match DB nullability
 }
 ```
 
-### 4. TypeScript Type Update
-```typescript
-export interface Database {
-  public: {
-    Tables: {
-      personalities: {
-        Row: {
-          id: string;
-          name: string;
-          new_field: string | null; // Match DB nullability
-        };
-        Insert: {
-          id?: string;
-          new_field?: string; // Optional
-        };
-        Update: {
-          new_field?: string; // Optional
-        };
-      };
-    };
-  };
-}
-```
+### 5) Polling with Dedupe/State Reuse
 
-### 5. Polling Optimization
 ```typescript
-sendMessage: async (message: string) => {
-  const { lastRunCheck, openaiService } = get();
-  
-  const run = await openaiService.createRun(threadId, assistantId);
-  
-  let runStatus = run.status;
-  while (runStatus !== 'completed' && runStatus !== 'failed') {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // ✅ Reuse lastRunCheck if same run
-    const checkResult = lastRunCheck?.id === run.id 
-      ? lastRunCheck 
-      : await openaiService.checkRun(threadId, run.id);
-    
-    runStatus = checkResult.status;
-    set({ lastRunCheck: checkResult });
+async function waitForResult(id: string) {
+  let status = 'pending';
+  while (status !== 'completed' && status !== 'failed') {
+    await delay(1000);
+    const next = await getStatus(id);
+    status = next.status;
+    set({ lastCheck: next });   // reuse lastCheck to prevent duplicate calls
   }
 }
 ```
 
-### 6. React Component with Zustand
-```typescript
-export function MyComponent() {
-  // ✅ Selective subscriptions - only re-render when these change
-  const items = useStore(state => state.items);
-  const loading = useStore(state => state.loading);
-  
-  // ❌ Don't do this - subscribes to everything
-  // const everything = useStore();
-  
+### 6) UI Component (selective subscriptions; avoid over-render)
+
+```tsx
+export function MyList() {
+  const items = useStore(s => s.items);     // subscribe to needed slices
+  const loading = useStore(s => s.loading);
   return (
-    <div>
-      {loading && <Spinner />}
-      {items.map(item => <Item key={item.id} {...item} />)}
-    </div>
+    <div>{loading ? 'Loading…' : items.map(i => <Row key={i.id} {...i} />)}</div>
   );
 }
 ```
 
 ---
 
-## 🐛 Top Issues & Quick Fixes
+## 🐛 Top Issues & Quick Fixes (make these yours)
 
-### 1. Duplicate OpenAI API Calls
-**Symptom:** Multiple "Run status" logs, rate limit errors  
-**Cause:** Not reusing lastRunCheck in polling  
-**Fix:** Use pattern #5 above in `src/store/useStore.ts:sendMessage()`
+1. **Duplicate API calls**
+   Symptom: burst of identical requests / rate-limit errors
+   Fix: reuse last check/state; dedupe by `(resourceId, op)`; backoff & caps.
 
-### 2. Cyrillic Names Rejected
-**Symptom:** "Invalid name parameter" from OpenAI  
-**Cause:** Missing transliteration  
-**Fix:** ALWAYS use `transliterate(name)` in `src/lib/openai.ts` methods  
-**Test:** `transliterate('Тестовый')` → `"Testovyy"`
+2. **Invalid identifiers / locales**
+   Symptom: API rejects non-Latin or special chars
+   Fix: enable transliteration/slugify when `{{REQUIRES_LATIN}} = true`.
 
-### 3. Migration Fails
-**Symptom:** Transaction deadlock, changes not applied  
-**Cause:** Using BEGIN/COMMIT with rpc or multiple DDL in one call  
-**Fix:** Use pattern #3 above - separate rpc calls, no transactions
+3. **Migration conflicts**
+   Symptom: deadlocks / failures in RPC/DDL
+   Fix: split DDL into discrete steps; verify between steps; no implicit transactions if tool forbids.
 
-### 4. TypeScript Type Errors
-**Symptom:** Type mismatches after DB change  
-**Cause:** Database interface not updated  
-**Fix:** Update pattern #4 in `src/lib/supabase.ts` to match DB schema
+4. **Type drift after schema changes**
+   Symptom: TS errors / runtime nulls
+   Fix: update types with accurate nullability; regenerate client types if available.
 
-### 5. File Upload Not Working
-**Symptom:** File not appearing in assistant  
-**Cause:** Wrong flow - using Supabase Storage instead of OpenAI  
-**Fix:** Upload to OpenAI Files API → Save metadata to DB → Update assistant
+5. **Wrong file flow**
+   Symptom: files not reaching consumer
+   Fix: follow agreed flow → Upload to `{{FILES_BACKEND}}` → persist metadata → notify consumers.
 
 ---
 
 ## 🔄 Sprint Workflow
 
-### Phase 1: Planning (5-10% time)
-1. Understand request
-2. Read PROJECT_ARCHITECTURE.md (what's done?)
-3. Read DATABASE_CHANGELOG.md (current DB?)
-4. Create TODO list
-5. Get user confirmation
+**Phase 1 — Planning (5–10%)**
 
-### Phase 2: Implementation (70-80% time)
-1. Start bottom-up: DB → Types → Services → State → UI
-2. Make incremental commits
-3. Test as you go
-4. Update TODO checklist
+1. Understand request & constraints
+2. Read PROJECT_ARCHITECTURE.md (what’s done?)
+3. Read {{SCHEMA_CHANGELOG_PATH}} (DB state)
+4. Draft TODO (+ risks/rollback)
+5. Confirm with owner
 
-### Phase 3: Testing (10-15% time)
-1. Manual testing (happy path + edge cases)
-2. Run checks: `npm run type-check`, `npm run build`
-3. Ask user to test
-4. Fix issues before documenting
+**Phase 2 — Implementation (70–80%)**
 
-### Phase 4: Documentation (10-15% time) 🚨 NEVER SKIP!
-1. Update PROJECT_ARCHITECTURE.md (status + components)
-2. Update DATABASE_CHANGELOG.md (if DB changed)
-3. Update CLAUDE.md (new patterns/issues)
-4. Update README.md (version bump)
+* Bottom-up: DB → types → services → state → UI
+* Incremental commits; test continuously
 
-### Phase 5: Completion (5% time)
-1. Create final commit (use template below)
-2. Push changes
-3. Ask user: "Ready to close sprint?"
+**Phase 3 — Testing (10–15%)**
+
+* Manual: happy path + edges
+* Run checks: `{{PKG_MANAGER}} run type-check`, `{{PKG_MANAGER}} run build`, tests
+
+**Phase 4 — Documentation (10–15%)**
+
+* Update PROJECT_ARCHITECTURE.md & {{SCHEMA_CHANGELOG_PATH}}
+* Update CLAUDE.md (new patterns/issues)
+* Update README (commands/versions)
+
+**Phase 5 — Completion (≈5%)**
+
+* Final commit (see template below)
+* Push + ask owner to confirm closure
 
 ---
 
 ## 📝 Sprint Commit Template
 
 ```bash
-Sprint: [Feature brief]
+Sprint: [Short feature brief]
 
 - Implemented: [core functionality]
-- Updated: PROJECT_ARCHITECTURE.md, DATABASE_CHANGELOG.md
+- Updated: PROJECT_ARCHITECTURE.md{{SCHEMA_CHANGELOG_PATH ? `, ${SCHEMA_CHANGELOG_PATH}` : ''}}
 - Fixed: [if any]
 - Docs: updated project documentation
 
@@ -265,7 +217,6 @@ Tested:
 ✓ [test 1]
 ✓ [test 2]
 
-🤖 Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -274,74 +225,75 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ## 🌳 Decision Tree: New Feature
 
 ```
-User requests feature
-├─ DB changes needed?
-│  ├─ YES → Read DATABASE_CHANGELOG → Plan migration
-│  └─ NO → Analyze code
-├─ Touches OpenAI API?
-│  ├─ YES → Check transliteration + polling
-│  └─ NO → Continue
-└─ Similar pattern exists?
-   ├─ YES → Reuse pattern
-   └─ NO → Propose solution for discussion
+New request
+├─ DB changes?
+│  ├─ YES → read changelog → plan migration → verify
+│  └─ NO → code analysis
+├─ External APIs touched?
+│  ├─ YES → check identifiers/limits/backoff
+│  └─ NO → continue
+└─ Prior pattern exists?
+   ├─ YES → reuse/adapt
+   └─ NO  → propose minimal, testable plan
 ```
 
 ---
 
-## 📟 Quick Commands
+## 📟 Quick Commands (fill per project)
 
 ```bash
-# Database
-node apply-migration.mjs
-npm run supabase:test
+# Database (examples)
+{{MIGRATE_CMD}}
+{{DB_VERIFY_CMD}}
 
 # Development
-npm run dev
-npm run build
-npm run type-check
+{{PKG_MANAGER}} run dev
+{{PKG_MANAGER}} run build
+{{PKG_MANAGER}} run type-check
+{{PKG_MANAGER}} test
+{{PKG_MANAGER}} run test:watch
 
-# Navigation
+# Navigation / Search (examples)
 tree -L 2 -I 'node_modules|dist'
-rg "search_term" --type ts
-
-# Debugging
-localStorage.getItem('openai_api_key')
-useStore.getState()
+rg "search_term" --type {{LANGUAGE | 'ts'}}
 ```
 
 ---
 
 ## 🔍 Quick Diagnostics
 
-### Database
+### Database (examples)
+
 ```sql
--- Check structure
+-- Structure
 SELECT column_name, data_type, is_nullable
-FROM information_schema.columns 
-WHERE table_name = 'personalities';
+FROM information_schema.columns
+WHERE table_name = '{{TABLE_NAME}}';
 
--- Check indexes
-SELECT indexname FROM pg_indexes 
-WHERE tablename = 'personalities';
+-- Indexes
+SELECT indexname FROM pg_indexes
+WHERE tablename = '{{TABLE_NAME}}';
 ```
 
-### State
+### State (examples)
+
 ```typescript
-// Browser console
-const state = useStore.getState();
-console.log('State:', state);
+// Browser or Node REPL
+const s = useStore.getState?.();
+console.log('State:', s);
 ```
 
-### Network
+### Network (examples)
+
 ```javascript
-// Monitor OpenAI calls
-let count = 0;
-const orig = window.fetch;
-window.fetch = function(...args) {
-  if (args[0].includes('openai')) {
-    console.log(`API call #${++count}:`, args[0]);
+// Simple client-side interceptor (dev only)
+let n = 0;
+const origFetch = window.fetch;
+window.fetch = (...args) => {
+  if (String(args[0]).includes('{{API_HOST_FRAGMENT}}')) {
+    console.log(`API call #${++n}:`, args[0]);
   }
-  return orig.apply(this, args);
+  return origFetch.apply(window, args);
 };
 ```
 
@@ -349,84 +301,53 @@ window.fetch = function(...args) {
 
 ## 📋 Sprint Completion Checklist
 
-**🚨 MANDATORY before closing sprint:**
-
-- [ ] Feature works as specified
-- [ ] Tests pass (manual + type-check + build)
-- [ ] No console errors
-- [ ] PROJECT_ARCHITECTURE.md updated
-- [ ] DATABASE_CHANGELOG.md updated (if DB changed)
-- [ ] CLAUDE.md updated (if new patterns/issues)
-- [ ] README.md version bumped
-- [ ] Final commit created
-- [ ] User confirmed closure
+* [ ] Feature matches acceptance criteria
+* [ ] Tests pass (manual + type-check + build + automated where present)
+* [ ] No runtime/console errors
+* [ ] PROJECT_ARCHITECTURE.md updated
+* [ ] {{SCHEMA_CHANGELOG_PATH}} updated (if DB changed)
+* [ ] CLAUDE.md updated (if new patterns/issues)
+* [ ] README.md updated (if commands changed)
+* [ ] User/owner confirmed closure
 
 ---
 
-## 🎯 Success Metrics
+## 📚 Naming Conventions (defaults)
 
-**Sprint is complete when:**
-- ✅ All 4 documentation files updated
-- ✅ Changes committed with proper message
-- ✅ User confirmed closure
-
-**Sprint is NOT complete when:**
-- ❌ Documentation not updated
-- ❌ No commit created
-- ❌ User not asked for confirmation
-
----
-
-## 📚 Naming Conventions
-
-```typescript
-// Files
-my-component.tsx        // Kebab-case
-MyComponent.tsx        // PascalCase for React
-
-// Variables
-const userName = '';   // camelCase
-const MAX_SIZE = 20;   // SCREAMING_SNAKE for constants
-
-// Database
-user_profiles         // snake_case tables
-created_at           // snake_case columns
-
-// Functions
-async fetchData()    // camelCase, verb prefix
-function isValid()   // Boolean: is/has/can prefix
+```text
+Files:       feature-action.ext, module.service.ext, useThing.ext, thing.repository.ext
+Variables:   camelCase
+Constants:   SCREAMING_SNAKE_CASE
+Classes/TSX: PascalCase
+DB:          snake_case tables & columns (e.g., user_profiles, created_at)
+Functions:   verbs (fetchData), booleans prefixed (isValid/hasAccess/canRun)
 ```
 
 ---
 
 ## 🔄 Quick Recovery
 
-### Rollback Migration
-```bash
-node migrations/rollback_xxx.mjs
-# Then update src/lib/supabase.ts types
-```
+**Rollback migration**
 
-### Reset State
+* Use your down migration or a documented rollback procedure.
+* Re-sync application types with the DB.
+
+**Reset local state (example)**
+
 ```typescript
-// Browser console
-useStore.setState({ 
-  personalities: [],
-  selectedPersonality: null,
-  error: null 
-});
-useStore.getState().loadPersonalities();
+useStore?.setState?.(initialState);
 ```
 
-### Emergency Reset
+**Emergency reset (git)**
+
 ```bash
-git stash save "backup_$(date +%Y%m%d)"
+git stash push -m "backup_$(date +%Y%m%d_%H%M)"
 git reset --hard <last_good_commit>
-rm -rf node_modules && npm install
-npm run dev
+rm -rf node_modules && {{PKG_MANAGER}} install
+{{PKG_MANAGER}} run dev
 ```
 
 ---
 
-*Updated at each sprint completion*  
-*Last updated: 2025-09-30*
+*Maintain this file at each sprint completion.*
+*Last updated: 2025-10-11*
