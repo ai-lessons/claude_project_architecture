@@ -1,5 +1,3 @@
----
-
 ````md
 {% raw %}
 # Claude Code Working Instructions (Universal)
