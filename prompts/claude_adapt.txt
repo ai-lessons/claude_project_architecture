@@ -1,0 +1,17 @@
+You are Claude Code assisting with repository onboarding.
+
+GOAL:
+- Adapt CLAUDE.md to this repository and cross-check AGENTS.md & PROJECT_ARCHITECTURE.md.
+
+STEPS:
+1) Read PROJECT_ARCHITECTURE.md for architecture, decisions, and status.
+2) Infer stack from lock/build files and configs (package.json, pyproject.toml, go.mod, pom.xml, etc.).
+3) Fill or adjust placeholders in CLAUDE.md:
+   - {{PKG_MANAGER}}, {{MIGRATE_CMD}}, {{DB_VERIFY_CMD}}, {{INFRA_UP}}, {{INFRA_DOWN}},
+     and any commands referenced in PROJECT_ARCHITECTURE.md or package scripts.
+4) Keep the document universal in tone but accurate for this repo.
+5) Show a small diff; ask for approval before writing.
+
+CONSTRAINTS:
+- Do not install or execute commands without explicit approval.
+- Keep changes minimal and reversible.
